@@ -4,7 +4,7 @@ PyPlacePlayer
 P-Trip is a program to read from the reddit.com/r/place dataset and display
 the information to the screen as a timelapse.
 '''
-#imports additiona python packages to handle complex functions
+#imports additional python packages to handle complex functions
 import numpy as np
 import pygame as pg
 
