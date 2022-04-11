@@ -51,9 +51,9 @@ def checkDataset(file, url):
         # finish downloading before it tries to decompress it.
         proc = 'curl -o ' + file + '.gzip ' + url + file + \
                '.gzip && gzip -f -d -S .gzip ' + file + '.gzip'
-        # starts the terminal in a subprocess so the rest of the code can continue
+        # initializes the terminal command in subprocess module
         p = subprocess.Popen(proc, shell=True)
-        # gets info from the subprocess, can be used for things like making a progress bar of the downloads
+        # runs command and waits for dataflow to finish before continuing
         p.communicate()
 
 # Reads data file into a list and sends it to pygame for display
