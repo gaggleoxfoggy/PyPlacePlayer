@@ -14,8 +14,8 @@ import time
 
 # static constants
 #X & Y constants, will be used to define resolution of player window
-X_RES = 2000
-Y_RES = 2000
+X_RES = 1000
+Y_RES = 1000
 # base url that stores datasets from r/place
 D_URL = 'https://placedata.reddit.com/data/canvas-history/'
 # first filename of dataset
@@ -170,7 +170,6 @@ def readFile(file, dataSet):
                 # remove extra data from x & y position values and convert to integer
                 xPos = int(xPos.strip('"'))
                 yPos = int(yPos.rstrip('"\n'))
-                if xPos
                 # initialize variable pixel as class type PlacePixel
                 pixel = PlacePixel()
                 # assign information parsed from the line to the class
