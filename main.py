@@ -14,8 +14,8 @@ import time
 
 # static constants
 #X & Y constants, will be used to define resolution of player window
-X_RES = 1000
-Y_RES = 1000
+X_RES = 2000
+Y_RES = 2000
 # base url that stores datasets from r/place
 D_URL = 'https://placedata.reddit.com/data/canvas-history/'
 # first filename of dataset
@@ -48,18 +48,20 @@ class PlacePixel:
         self.xPos = xPos
         self.yPos = yPos
 
-
-
-
-
-
+# ------------------------------------------------ Start of code to download and sort data sets
 # check for dataset and download if needed
 def checkDataset():
+    # start a loop counting ds up through 79 values, which is 0-78. Source filenames are numbered 0-78
     for ds in range(79):
+        # numbers less than 10 will need to be padded with a 0 so that ds will always be the same length
         if ds < 10:
+            # adds a 0 the front and makes it a string
             num = '0' + str(ds)
+        # numbers >= 10 already have two digits and can just be converted to a string
         else:
             num = str(ds)
+        # makes a new string using the first 36 characters from the filename, inserting a 2 character string
+        # of the current number in the loop and adding the end of the filename back so it has the extension
         dsFile = D_FILE[:36] + num + D_FILE[38:]
         # check to see if the file already exists
         if not os.path.exists(dsFile):
@@ -72,26 +74,42 @@ def checkDataset():
             p = subprocess.Popen(proc, shell=True)
             # links thread to the subprocess so it will not continue until completed
             p.communicate()
+    # after it checks through all filenames to make sure they have been downloaded and decompressed, it
+    # launches the fixData function
     fixData()
 
+# makes a dictionary of start times to reorganize the dataset
 def fixData():
+    # creates an empty dictionary
     dataFiles = {}
+    # start a loop counting ds up through 79 values, which is 0-78. Source filenames are numbered 0-78
     for ds in range(79):
+        # numbers less than 10 will need to be padded with a 0 so that ds will always be the same length
         if ds < 10:
+            # adds a 0 the front and makes it a string
             num = '0' + str(ds)
+        # numbers >= 10 already have two digits and can just be converted to a string
         else:
             num = str(ds)
+        # makes a new string using the first 36 characters from the filename, inserting a 2 character string
+        # of the current number in the loop and adding the end of the filename back so it has the extension
         dsFile = D_FILE[:36] + num + D_FILE[38:]
+        # checks to make sure file exists before processing
         if os.path.exists(dsFile):
             # sends the filename to the sortFile function to get first time entry in seconds
-            utc, filename = sortFile(dsFile)
-            dataFiles[utc] = filename
+            tSeconds, filename = sortFile(dsFile)
+            # creates a dictionary entry with the key of time in seconds and value of filename
+            dataFiles[tSeconds] = filename
+    # set count variable to starting point of 100
     count = 100
-
+    # makes a loop going through dataFile sorted by keys
     for startTime in sorted(dataFiles):
-        proc = 'mv', dataFiles[startTime], D_SORTED + str(count) + D_EXT
+        # make terminal command to move the file to the new filename in order. This is how you rename a
+        # file in a Linux terminal, move to the same location but with different name
+        proc = 'mv ' + dataFiles[startTime] + ' ' + D_SORTED + str(count) + D_EXT
         # starts the terminal in a subprocess so the rest of the code can continue
         subprocess.Popen(proc, shell=True)
+        # increment count variable for next pass
         count += 1
 
 # sorts the dataset into chronological order
@@ -104,18 +122,26 @@ def sortFile(file):
             try:
                 # split line at every comma and assign each comma separated value to a variable
                 utc, null, hexValue, xPos, yPos = (line.split(','))
+                # take the first 19 characters of time value, which cuts off milliseconds and UTC label
+                # Milliseconds are cut off because the string length will change frequently, for example a time could
+                # show up as 04:20:22, 04:20:22.2, 04:20:22.22, or 04:20:22.222. This could be accounted for, but since
+                # each dataset is a large chunk of time there is no way two datasets would start within the same second
                 utc = utc[:19]
+                # this uses the datetime package to make an object that datetime recognizes as a full data and time.
+                # The entry would show up like 2022-04-01 13:04:46, so we're saying here's a string formatted as
+                # year-month-day hours:minutes:seconds.
                 utc = datetime.strptime(utc, "%Y-%m-%d %H:%M:%S")
+                # This converts the time object into a tuple, with is how the time package wants the data so that it
+                # can convert it into seconds since the epoch. Then subtract time since the epoch starting around the
+                # first time entry in the dataset. This last subtraction step isn't necessary since it would still be i
+                # n order either way, but it just makes the numbers smaller and easier to deal with if we ever print
+                # them out during testing.
                 utc = time.mktime(utc.timetuple()) - 1648773840
+                # returns tuple containing the time in seconds for the first entry in the file and the filename
                 return utc, file
             except ValueError:  # skips lines from the csv that do not contain pixel data
                 print('No values')
-
-
-
-
-
-
+# ------------------------------------------------ End of code to download and sort data sets
 
 # Reads data file into a list and sends it to pygame for display
 def readFile(file, dataSet):
@@ -144,6 +170,7 @@ def readFile(file, dataSet):
                 # remove extra data from x & y position values and convert to integer
                 xPos = int(xPos.strip('"'))
                 yPos = int(yPos.rstrip('"\n'))
+                if xPos
                 # initialize variable pixel as class type PlacePixel
                 pixel = PlacePixel()
                 # assign information parsed from the line to the class
@@ -152,7 +179,7 @@ def readFile(file, dataSet):
                 dataSet.append(pixel)
                 # check to see if the checkTime variable has been set
                 if not checkTime:
-                    # if not, set it to time of current entry
+                    # if not, set it to the seconds value of current entry
                     checkTime = sTime
                 # if current entry is not from the same second as the previous ones
                 if checkTime != sTime:
@@ -160,7 +187,7 @@ def readFile(file, dataSet):
                     pixelArray = readData(dataSet)
                     # send array of pixel info to the pyGame function
                     pyGame(pixelArray)
-                    # update checktime to the current entry
+                    # update checktime to the seconds value of current entry
                     checkTime = sTime
                     # clear dataset so it doesn't get too big
                     dataSet.clear()
@@ -168,8 +195,6 @@ def readFile(file, dataSet):
                     dataSet.append(pixel)
             except ValueError:  # skips lines from the csv that do not contain pixel data
                 print('No values')
-    return dataSet
-
 
 # reads pixels from the dataset and returns an array of RGB values
 def readData(dataSet):
@@ -197,6 +222,7 @@ def pyGame(pixelarray):
 def main():
     # make sure end of dataset is downloaded and sorted before continuing
     if not os.path.exists(D_SORTED + '178' + D_EXT):
+        # if it doesn't find the sorted version of the final dataset, check all files
         checkDataset()
     # create empty list to store info from the dataset
     dataSet = []
@@ -209,14 +235,15 @@ def main():
             # if exit code is given, end the loop
             if event.type == pg.QUIT:
                 running = False
-
+        # loop through ds values of 100-178 (always stops before end value). Since we made our filenames start at 100,
+        # we don't need to do any additional padding for numbers below 10 and can just convert all values to strings
         for ds in range(100, 179):
-            #dsFile = D_FILE[:36] + num + D_FILE[38:]
+            # make string of our new filename plus current number plus extension
             dsFile = D_SORTED + str(ds) + D_EXT
             # checks to see if data file exists before running function
             if os.path.exists(dsFile):
                 # sends the filename to the readFile function for processing and display
-                dataSet = readFile(dsFile, dataSet)
+                readFile(dsFile, dataSet)
 
 # python way of checking if this is the main program, i.e. this code isn't being called from 'import xxx'
 if __name__ == '__main__':
