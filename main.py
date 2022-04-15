@@ -3,8 +3,16 @@ PyPlacePlayer
 
 P-Trip is a program to read from the reddit.com/r/place dataset and display
 the information to the screen as a timelapse.
+
+First X = 2022-04-02 16:24:56.239 UTC
+Sorted_Data_113.csv
+
+First Y = 2022-04-03 19:03:53.356 UTC
+Sorted_Data_134.csv
+
 '''
 # imports additional python packages to handle complex functions
+import random
 import numpy as np # used to turn dataset into array of pixel values
 import pygame as pg # reads pixel array and displays images to screen
 import subprocess # executes tasks in a subprocess
@@ -14,8 +22,10 @@ import time
 
 # static constants
 #X & Y constants, will be used to define resolution of player window
-X_RES = 1000
-Y_RES = 1000
+X_RES = 800
+Y_RES = 800
+RAND_TOLERANCE = 30
+GRID_SIZE = 2000
 # base url that stores datasets from r/place
 D_URL = 'https://placedata.reddit.com/data/canvas-history/'
 # first filename of dataset
@@ -24,7 +34,6 @@ D_FILE = '2022_place_canvas_history-000000000000.csv'
 D_SORTED = 'Sorted_Data_'
 # extension of datasets
 D_EXT = '.csv'
-
 # initialize pygame
 pg.init()
 # set display resolution to X & Y constants
@@ -144,7 +153,7 @@ def sortFile(file):
 # ------------------------------------------------ End of code to download and sort data sets
 
 # Reads data file into a list and sends it to pygame for display
-def readFile(file, dataSet):
+def readFile(file, dataSet, xOffset, yOffset):
     # initial value for 'checkTime' which will be used to see when the dataset has moved to the next second
     checkTime = False
     # opens a file and also handles closing the file when done
@@ -155,54 +164,57 @@ def readFile(file, dataSet):
             try:
                 # split line at every comma and assign each comma separated value to a variable
                 utc, null, hexValue, xPos, yPos = (line.split(','))
-                # break full date/time variable into smaller date and time variables
-                date, time, null = utc.split()
-                # only take the first 8 characters from time to remove milliseconds
-                time = time[:8]
-                # split time variable into hours, minutes, seconds variables
-                hTime, mTime, sTime = time.split(':')
-                # break each section of the hex value into r,g,b parts
-                r = hexValue[1] + hexValue[2]
-                g = hexValue[3] + hexValue[4]
-                b = hexValue[5] + hexValue[6]
-                # convert RGB 16 bit hex values into integers
-                rgb = [int(r, 16), int(g, 16), int(b, 16)]
                 # remove extra data from x & y position values and convert to integer
                 xPos = int(xPos.strip('"'))
                 yPos = int(yPos.rstrip('"\n'))
-                # initialize variable pixel as class type PlacePixel
-                pixel = PlacePixel()
-                # assign information parsed from the line to the class
-                pixel.set(date, hTime, mTime, sTime, rgb, xPos, yPos)
-                # add an entry to the list with the class data
-                dataSet.append(pixel)
-                # check to see if the checkTime variable has been set
-                if not checkTime:
-                    # if not, set it to the seconds value of current entry
-                    checkTime = sTime
-                # if current entry is not from the same second as the previous ones
-                if checkTime != sTime:
-                    # send dataset to the readData function, get array of pixel info returned
-                    pixelArray = readData(dataSet)
-                    # send array of pixel info to the pyGame function
-                    pyGame(pixelArray)
-                    # update checktime to the seconds value of current entry
-                    checkTime = sTime
-                    # clear dataset so it doesn't get too big
-                    dataSet.clear()
-                    # re-add current entry as starting point of new dataset
+                # check if the current pixel being read falls within the window resolution
+                if xOffset <= xPos < (X_RES + xOffset) and yOffset <= yPos < (Y_RES + yOffset):
+                    xPos -= xOffset
+                    yPos -= yOffset
+                    # break full date/time variable into smaller date and time variables
+                    date, time, null = utc.split()
+                    # only take the first 8 characters from time to remove milliseconds
+                    time = time[:8]
+                    # split time variable into hours, minutes, seconds variables
+                    hTime, mTime, sTime = time.split(':')
+                    # break each section of the hex value into r,g,b parts
+                    r = hexValue[1] + hexValue[2]
+                    g = hexValue[3] + hexValue[4]
+                    b = hexValue[5] + hexValue[6]
+                    # convert RGB 16 bit hex values into integers
+                    rgb = [int(r, 16), int(g, 16), int(b, 16)]
+                    # initialize variable pixel as class type PlacePixel
+                    pixel = PlacePixel()
+                    # assign information parsed from the line to the class
+                    pixel.set(date, hTime, mTime, sTime, rgb, xPos, yPos)
+                    # add an entry to the list with the class data
                     dataSet.append(pixel)
+                    # check to see if the checkTime variable has been set
+                    if not checkTime:
+                        # if not, set it to the seconds value of current entry
+                        checkTime = sTime
+                    # if current entry is not from the same second as the previous ones
+                    if checkTime != sTime:
+                        # send dataset to the readData function, get array of pixel info returned
+                        pixelArray = readData(dataSet)
+                        # send array of pixel info to the pyGame function
+                        pyGame(pixelArray)
+                        # update checktime to the seconds value of current entry
+                        checkTime = sTime
+                        # clear dataset so it doesn't get too big
+                        dataSet.clear()
+                        # re-add current entry as starting point of new dataset
+                        dataSet.append(pixel)
             except ValueError:  # skips lines from the csv that do not contain pixel data
                 print('No values')
+    return dataSet
 
 # reads pixels from the dataset and returns an array of RGB values
 def readData(dataSet):
     # read through the dataset from the first pixel requested until the end of the dataset
     for x in range(len(dataSet)):
-        # check if the current pixel being read falls within the window resolution
-        if 0 <= dataSet[x].xPos < X_RES and 0 <= dataSet[x].yPos < Y_RES:
-            # assign the RGB values to an X,Y position in the array
-            pixelArray[dataSet[x].xPos, dataSet[x].yPos] = dataSet[x].rgb
+        # assign the RGB values to an X,Y position in the array
+        pixelArray[dataSet[x].xPos, dataSet[x].yPos] = dataSet[x].rgb
     # return array of pixel data
     return pixelArray
 
@@ -217,6 +229,32 @@ def pyGame(pixelarray):
     # check clock to keep maximum framerate at 60 FPS
     clock.tick(60)
 
+def pickSpot():
+    global pixelArray
+    firstSet = 100
+    xRand = random.randrange(GRID_SIZE)
+    yRand = random.randrange(GRID_SIZE)
+    if xRand < RAND_TOLERANCE:
+        xRand = 0
+    elif xRand > (GRID_SIZE - (RAND_TOLERANCE + X_RES)):
+        xRand = GRID_SIZE - X_RES
+    if yRand < RAND_TOLERANCE:
+        yRand = 0
+    elif yRand > (GRID_SIZE - (RAND_TOLERANCE + Y_RES)):
+        yRand = GRID_SIZE - Y_RES
+    if xRand >= ( (GRID_SIZE / 2) - (X_RES / 2) ) and yRand < (GRID_SIZE - Y_RES):
+        firstSet = 113
+        bg = pg.image.load('xBase.png')
+        bg.convert()
+        screen.blit(bg, (-xRand, -yRand))
+        pixelArray = pg.surfarray.array3d(screen)
+    if yRand >= ( (GRID_SIZE / 2) - (Y_RES / 2) ):
+        firstSet = 134
+        bg = pg.image.load('yBase.png')
+        bg.convert()
+        screen.blit(bg, (-xRand, -yRand))
+        pixelArray = pg.surfarray.array3d(screen)
+    return xRand, yRand, firstSet
 # main code loop
 def main():
     # make sure end of dataset is downloaded and sorted before continuing
@@ -234,15 +272,16 @@ def main():
             # if exit code is given, end the loop
             if event.type == pg.QUIT:
                 running = False
+        xOffset, yOffset, firstSet = pickSpot()
         # loop through ds values of 100-178 (always stops before end value). Since we made our filenames start at 100,
         # we don't need to do any additional padding for numbers below 10 and can just convert all values to strings
-        for ds in range(100, 179):
+        for ds in range(firstSet, 179):
             # make string of our new filename plus current number plus extension
             dsFile = D_SORTED + str(ds) + D_EXT
             # checks to see if data file exists before running function
             if os.path.exists(dsFile):
                 # sends the filename to the readFile function for processing and display
-                readFile(dsFile, dataSet)
+                dataSet = readFile(dsFile, dataSet, xOffset, yOffset)
 
 # python way of checking if this is the main program, i.e. this code isn't being called from 'import xxx'
 if __name__ == '__main__':
