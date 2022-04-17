@@ -1,3 +1,4 @@
+#!/usr/bin/python
 '''
 PyPlacePlayer
 
@@ -22,8 +23,9 @@ import time
 
 # static constants
 #X & Y constants, will be used to define resolution of player window
-X_RES = 800
-Y_RES = 800
+X_RES = 400
+Y_RES = 240
+RES_SCALE = 2
 RAND_TOLERANCE = 30
 GRID_SIZE = 2000
 # base url that stores datasets from r/place
@@ -37,10 +39,10 @@ D_EXT = '.csv'
 # initialize pygame
 pg.init()
 # set display resolution to X & Y constants
-screen = pg.display.set_mode((X_RES, Y_RES))
+screen = pg.display.set_mode((X_RES * RES_SCALE, Y_RES * RES_SCALE))#, pg.FULLSCREEN)
 # initialize pygame clock, will be used to lock framerate
 clock = pg.time.Clock()
-
+pg.mouse.set_visible(False)
 # create array for pixels and set default to white
 pixelArray = np.full((X_RES, Y_RES, 3), 255)
 
@@ -219,9 +221,10 @@ def readData(dataSet):
     return pixelArray
 
 # loop of the game engine that displays the data to screen
-def pyGame(pixelarray):
+def pyGame(pixelArray):
     # turn array of pixel values into an image buffer
     surface = pg.surfarray.make_surface(pixelArray)
+    surface = pg.transform.scale(surface, (X_RES * RES_SCALE, Y_RES * RES_SCALE))
     # add the new image to the screen canvas starting at top left corner (0,0)
     screen.blit(surface, (0, 0))
     # update screen ouptut
@@ -242,18 +245,24 @@ def pickSpot():
         yRand = 0
     elif yRand > (GRID_SIZE - (RAND_TOLERANCE + Y_RES)):
         yRand = GRID_SIZE - Y_RES
-    if xRand >= ( (GRID_SIZE / 2) - (X_RES / 2) ) and yRand < (GRID_SIZE - Y_RES):
+    if xRand >= ( (GRID_SIZE / 2) - (X_RES / 2) ) and yRand < ( (GRID_SIZE / 2) - (Y_RES / 2) ):
         firstSet = 113
         bg = pg.image.load('xBase.png')
         bg.convert()
-        screen.blit(bg, (-xRand, -yRand))
-        pixelArray = pg.surfarray.array3d(screen)
+        rect = (xRand, yRand, X_RES, Y_RES)
+        bg = bg.subsurface(rect)
+        pixelArray = pg.surfarray.array3d(bg)
+        bg = pg.transform.scale(bg, (X_RES * RES_SCALE, Y_RES * RES_SCALE))
+        screen.blit(bg, (0, 0))
     if yRand >= ( (GRID_SIZE / 2) - (Y_RES / 2) ):
         firstSet = 134
         bg = pg.image.load('yBase.png')
         bg.convert()
-        screen.blit(bg, (-xRand, -yRand))
-        pixelArray = pg.surfarray.array3d(screen)
+        rect = (xRand, yRand, X_RES, Y_RES)
+        bg = bg.subsurface(rect)
+        pixelArray = pg.surfarray.array3d(bg)
+        bg = pg.transform.scale(bg, (X_RES * RES_SCALE, Y_RES * RES_SCALE))
+        screen.blit(bg, (0, 0))
     return xRand, yRand, firstSet
 # main code loop
 def main():
