@@ -34,6 +34,8 @@ D_URL = 'https://placedata.reddit.com/data/canvas-history/'
 D_FILE = '2022_place_canvas_history-000000000000.csv'
 # base filename of sorted data
 D_SORTED = 'Sorted_Data_'
+# base filename of chronologically re-ordered data
+D_ORDERED = 'Ordered_Data_'
 # extension of datasets
 D_EXT = '.csv'
 # initialize pygame
@@ -122,8 +124,7 @@ def fixData():
         subprocess.Popen(proc, shell=True)
         # increment count variable for next pass
         count += 1
-
-# sorts the dataset into chronological order
+# sorts the dataset into chronological order (DATA ITSELF WILL STILL BE OUT OF ORDER ON SOME!)
 def sortFile(file):
     # opens a file and also handles closing the file when done
     with open(file) as f:
@@ -152,18 +153,62 @@ def sortFile(file):
                 return utc, file
             except ValueError:  # skips lines from the csv that do not contain pixel data
                 print('No values')
+#order the contents of each dataset chronologically
+def orderDataset():
+    # start a loop counting ds up through 79 values, which is 0-78. Source filenames are numbered 0-78
+    for ds in range(100,179):
+        dsFile = D_SORTED + str(ds) + D_EXT
+        outFile = D_ORDERED + str(ds) + D_EXT
+        # checks to make sure file exists before processing
+        if os.path.exists(dsFile):
+            # creates an empty dictionary
+            dataFiles = {}
+            # opens a file and also handles closing the file when done
+            with open(dsFile) as f:
+                # iterate through each line of text
+                for line in f:
+                    # try adds exception handling so program will not crash on errors
+                    try:
+                        # split line at every comma and assign each comma separated value to a variable
+                        utc, null, hexValue, xPos, yPos = (line.split(','))
+                        utc = utc[:23]
+                        if not utc[22:].isdigit():
+                            utc = utc[:22]
+                            if not utc[21:].isdigit():
+                                utc = utc[:21]
+                                if not utc[20:].isdigit():
+                                    utc = utc[:19] + '.0'
+                        utc = datetime.strptime(utc, "%Y-%m-%d %H:%M:%S.%f")
+                        dataFiles[line] = utc
+                    except:
+                        print('No pixel data')
+            sortData = {k: v for k, v in sorted(dataFiles.items(), key=lambda x: x[1])}
+            sortData = sortData.keys()
+            with open(outFile, 'w') as f:
+                for k in sortData:
+                    f.write(k)
+            os.remove(dsFile)
 # ------------------------------------------------ End of code to download and sort data sets
 
 # Reads data file into a list and sends it to pygame for display
 def readFile(file, dataSet, xOffset, yOffset):
     # initial value for 'checkTime' which will be used to see when the dataset has moved to the next second
     checkTime = False
+    loopTime = time.time()
+    minLoop = 1000
+    maxLoop = 0
+    aveLoop = 0
+    timeLoop = 0
+    totalPixels = 0
+    goodPixels = 0
+    badPixels = 0
     # opens a file and also handles closing the file when done
     with open(file) as f:
         # iterate through each line of text
         for line in f:
             # try adds exception handling so program will not crash on errors
             try:
+                totalPixels += 1
                 # split line at every comma and assign each comma separated value to a variable
                 utc, null, hexValue, xPos, yPos = (line.split(','))
                 # remove extra data from x & y position values and convert to integer
@@ -171,14 +216,15 @@ def readFile(file, dataSet, xOffset, yOffset):
                 yPos = int(yPos.rstrip('"\n'))
                 # check if the current pixel being read falls within the window resolution
                 if xOffset <= xPos < (X_RES + xOffset) and yOffset <= yPos < (Y_RES + yOffset):
+                    goodPixels += 1
                     xPos -= xOffset
                     yPos -= yOffset
                     # break full date/time variable into smaller date and time variables
-                    date, time, null = utc.split()
+                    date, dataTime, null = utc.split()
                     # only take the first 8 characters from time to remove milliseconds
-                    time = time[:8]
+                    dataTime = dataTime[:8]
                     # split time variable into hours, minutes, seconds variables
-                    hTime, mTime, sTime = time.split(':')
+                    hTime, mTime, sTime = dataTime.split(':')
                     # break each section of the hex value into r,g,b parts
                     r = hexValue[1] + hexValue[2]
                     g = hexValue[3] + hexValue[4]
@@ -207,8 +253,26 @@ def readFile(file, dataSet, xOffset, yOffset):
                         dataSet.clear()
                         # re-add current entry as starting point of new dataset
                         dataSet.append(pixel)
+                else:
+                    badPixels += 1
             except ValueError:  # skips lines from the csv that do not contain pixel data
-                print('No values')
+                print('\n\n'+ file)
+                print(line)
+            loopTime = time.time() - loopTime
+            timeLoop += loopTime
+            if loopTime > maxLoop:
+                maxLoop = loopTime
+            elif loopTime < minLoop:
+                minLoop = loopTime
+            loopTime = time.time()
+    aveLoop = aveLoop / totalPixels
+    print(file)
+    print('%s Max loop time' % maxLoop)
+    print('%s Minimum loop time' % minLoop)
+    print('%s Average loop time' % aveLoop)
+    print('%s total pixels in set' % totalPixels)
+    print('%s good pixels in set' % goodPixels)
+    print('%s bad pixels in set' % badPixels)
     return dataSet
 
 # reads pixels from the dataset and returns an array of RGB values
@@ -267,9 +331,13 @@ def pickSpot():
 # main code loop
 def main():
     # make sure end of dataset is downloaded and sorted before continuing
-    if not os.path.exists(D_SORTED + '178' + D_EXT):
+    if not (os.path.exists(D_SORTED + '178' + D_EXT) or os.path.exists(D_ORDERED + '178' + D_EXT)):
         # if it doesn't find the sorted version of the final dataset, check all files
         checkDataset()
+    # make sure end of dataset is chronologically ordered before continuing
+    if not os.path.exists(D_ORDERED + '178' + D_EXT):
+        # if it doesn't find the sorted version of the final dataset, check all files
+        orderDataset()
     # create empty list to store info from the dataset
     dataSet = []
     # pygame variable to exit loop
@@ -286,11 +354,14 @@ def main():
         # we don't need to do any additional padding for numbers below 10 and can just convert all values to strings
         for ds in range(firstSet, 179):
             # make string of our new filename plus current number plus extension
-            dsFile = D_SORTED + str(ds) + D_EXT
+            dsFile = D_ORDERED + str(ds) + D_EXT
             # checks to see if data file exists before running function
             if os.path.exists(dsFile):
+                setTime = time.time()
                 # sends the filename to the readFile function for processing and display
                 dataSet = readFile(dsFile, dataSet, xOffset, yOffset)
+                setTime = time.time() - setTime
+                print('Dataset processed in %s seconds' % setTime)
 
 # python way of checking if this is the main program, i.e. this code isn't being called from 'import xxx'
 if __name__ == '__main__':
