@@ -270,9 +270,9 @@ def readFile(file, dataSet, xOffset, yOffset):
     print('%s Max loop time' % maxLoop)
     print('%s Minimum loop time' % minLoop)
     print('%s Average loop time' % aveLoop)
-    print('%s total pixels in set' % totalPixels)
-    print('%s good pixels in set' % goodPixels)
-    print('%s bad pixels in set' % badPixels)
+    print('%s Total pixels in set' % totalPixels)
+    print('%s Used pixels in set' % goodPixels)
+    print('%s Unused pixels in set' % badPixels)
     return dataSet
 
 # reads pixels from the dataset and returns an array of RGB values
