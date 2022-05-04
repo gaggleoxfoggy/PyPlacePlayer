@@ -224,6 +224,7 @@ def readFile(file, dataSet, xOffset, yOffset):
                 if not yPos2:
                     yPos = int(yPos.rstrip('"\n'))
                 else:
+                    totalPixels += 1
                     xPos2 = int(xPos2)
                     yPos = int(yPos)
                     yPos2 = int(yPos2.rstrip('"\n'))
