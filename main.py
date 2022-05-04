@@ -124,7 +124,7 @@ def fixData():
         subprocess.Popen(proc, shell=True)
         # increment count variable for next pass
         count += 1
-# sorts the dataset into chronological order (DATA ITSELF WILL STILL BE OUT OF ORDER ON SOME!)
+# sorts the datasets into chronological order
 def sortFile(file):
     # opens a file and also handles closing the file when done
     with open(file) as f:
@@ -170,7 +170,10 @@ def orderDataset():
                     # try adds exception handling so program will not crash on errors
                     try:
                         # split line at every comma and assign each comma separated value to a variable
-                        utc, null, hexValue, xPos, yPos = (line.split(','))
+                        try:
+                            utc, null, hexValue, xPos, yPos = (line.split(','))
+                        except:
+                            utc, null, hexValue, xPos, yPos, xPos2, yPos2 = (line.split(','))
                         utc = utc[:23]
                         if not utc[22:].isdigit():
                             utc = utc[:22]
@@ -209,16 +212,31 @@ def readFile(file, dataSet, xOffset, yOffset):
             # try adds exception handling so program will not crash on errors
             try:
                 totalPixels += 1
+                xPos2 = False
+                yPos2 = False
                 # split line at every comma and assign each comma separated value to a variable
-                utc, null, hexValue, xPos, yPos = (line.split(','))
+                try:
+                    utc, null, hexValue, xPos, yPos = (line.split(','))
+                except:
+                    utc, null, hexValue, xPos, yPos, xPos2, yPos2 = (line.split(','))
                 # remove extra data from x & y position values and convert to integer
                 xPos = int(xPos.strip('"'))
-                yPos = int(yPos.rstrip('"\n'))
+                if not yPos2:
+                    yPos = int(yPos.rstrip('"\n'))
+                else:
+                    xPos2 = int(xPos2)
+                    yPos = int(yPos)
+                    yPos2 = int(yPos2.rstrip('"\n'))
                 # check if the current pixel being read falls within the window resolution
                 if xOffset <= xPos < (X_RES + xOffset) and yOffset <= yPos < (Y_RES + yOffset):
                     goodPixels += 1
                     xPos -= xOffset
                     yPos -= yOffset
+                    if xPos2:
+                        if xOffset <= xPos2 < (X_RES + xOffset) and yOffset <= yPos2 < (Y_RES + yOffset):
+                            goodPixels += 1
+                            xPos2 -= xOffset
+                            yPos2 -= yOffset
                     # break full date/time variable into smaller date and time variables
                     date, dataTime, null = utc.split()
                     # only take the first 8 characters from time to remove milliseconds
@@ -237,6 +255,13 @@ def readFile(file, dataSet, xOffset, yOffset):
                     pixel.set(date, hTime, mTime, sTime, rgb, xPos, yPos)
                     # add an entry to the list with the class data
                     dataSet.append(pixel)
+                    if xPos2:
+                        # assign information parsed from the line to the class
+                        pixel.set(date, hTime, mTime, sTime, rgb, xPos2, yPos2)
+                        # add an entry to the list with the class data
+                        dataSet.append(pixel)
+                        print('Double entry added')
+
                     # check to see if the checkTime variable has been set
                     if not checkTime:
                         # if not, set it to the seconds value of current entry
