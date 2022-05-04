@@ -219,12 +219,12 @@ def readFile(file, dataSet, xOffset, yOffset):
                     utc, null, hexValue, xPos, yPos = (line.split(','))
                 except:
                     utc, null, hexValue, xPos, yPos, xPos2, yPos2 = (line.split(','))
+                    totalPixels += 1
                 # remove extra data from x & y position values and convert to integer
                 xPos = int(xPos.strip('"'))
                 if not yPos2:
                     yPos = int(yPos.rstrip('"\n'))
                 else:
-                    totalPixels += 1
                     xPos2 = int(xPos2)
                     yPos = int(yPos)
                     yPos2 = int(yPos2.rstrip('"\n'))
