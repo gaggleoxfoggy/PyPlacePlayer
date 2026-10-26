@@ -11,7 +11,7 @@ Sorted_Data_113.csv
 First Y = 2022-04-03 19:03:53.356 UTC
 Sorted_Data_134.csv
 
-2023 canvas size dataset changes
+2023
 X = 1000-1999, Y = 500-1499
 109
 X = 1000-2499, Y = 500-1499
@@ -25,6 +25,7 @@ X = 500-2499, Y = 0-1999
 X = 0-2499, Y = 0-1999
 138
 X = 0-2999, Y = 0-1999
+
 '''
 # imports additional python packages to handle complex functions
 import random
@@ -502,7 +503,7 @@ def pickSpot(year):
     if year == 23:
         if xRand > (2500 - (X_RES / 2)):
             firstSet = 138
-        elif (2000 + (X_RES / 2)) > xRand > (2000 - (X_RES / 2)):
+        elif (2000 - (X_RES / 2)) > xRand > (2000 - (X_RES / 2)):
             if (500 - (Y_RES / 2)) <= yRand < (1500 - (Y_RES / 2)):
                 firstSet = 109
             elif 0 < yRand < (500 - (Y_RES / 2)):
@@ -520,14 +521,14 @@ def pickSpot(year):
             if (500 - (Y_RES / 2)) < yRand < (1500 - (Y_RES / 2)):
                 firstSet = 132
         if yRand < (500 - (Y_RES / 2)):
-            if (500 - (X_RES / 2)) <= xRand < (2500 + (X_RES / 2)):
+            if (500 - (X_RES / 2)) <= xRand < (2500 - (X_RES / 2)):
                 firstSet = 121
             elif xRand < (500 - (X_RES / 2)):
                 firstSet = 132
             else:
                 firstSet = 138
-        elif yRand > (1500 + (Y_RES / 2)):
-            if (500 - (X_RES / 2)) <= xRand < (2500 + (X_RES / 2)):
+        elif yRand > (1500 - (Y_RES / 2)):
+            if (500 - (X_RES / 2)) <= xRand < (2500 - (X_RES / 2)):
                 firstSet = 128
             elif xRand < (500 - (X_RES / 2)):
                 firstSet = 132
@@ -550,6 +551,9 @@ def main():
     if not (os.path.exists(D_SORTED + '178' + D_EXT) or os.path.exists(D_ORDERED + '178' + D_EXT)):
         # if it doesn't find the sorted version of the final dataset, check all files
         checkDataset(22,COUNT22)
+    if not (os.path.exists('2023_place_canvas_history-000000000051.csv') or os.path.exists(D_ORDERED23 + '152' + D_EXT)):
+        # if it doesn't find the sorted version of the final dataset, check all files
+        checkDataset(23,COUNT23)
     # make sure end of dataset is chronologically ordered before continuing
     if not os.path.exists(D_ORDERED + '178' + D_EXT):
         # if it doesn't find the sorted version of the final dataset, check all files
@@ -576,16 +580,14 @@ def main():
         global X_RES
         global Y_RES
         global pixelArray
-        pickyear=random.randrange(22,24)
+        pickyear=22 #random.randrange(22,24)
         if pickyear == 22:
             rangeyear = 179
         if pickyear == 23:
             rangeyear = 153
-        RES_SCALE = random.randrange(0,MAX_SCALE)
-        if RES_SCALE == 0:
-            RES_SCALE = random.randrange(0,MAX_SCALE)
-            if RES_SCALE == 0:
-                RES_SCALE = 0.5
+        RES_SCALE = random.randrange(1,MAX_SCALE)
+        if RES_SCALE == 1: #  Native res is slow and doesn't show detail, shouldn't show up too often
+            RES_SCALE = random.randrange(1,MAX_SCALE)
         X_RES = round(NATIVE_X_RES / RES_SCALE)
         Y_RES = round(NATIVE_Y_RES / RES_SCALE)
         # create array for pixels and set default to white

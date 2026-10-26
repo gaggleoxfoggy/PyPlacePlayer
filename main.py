@@ -20,14 +20,16 @@ import subprocess # executes tasks in a subprocess
 import os # used for file operations
 from datetime import datetime
 import time
-
+os.environ['SDL_AUDIODRIVER'] = 'dsp' # Don't need audio and ALSA kept crashing
 # static constants
 #X & Y constants, will be used to define resolution of player window
-X_RES = 400
-Y_RES = 240
-RES_SCALE = 2
-RAND_TOLERANCE = 30
+NATIVE_X_RES = 800
+NATIVE_Y_RES = 600
+MAX_SCALE = 5 #   res scale will get randomized each loop with this as max
+RAND_TOLERANCE = 40
 GRID_SIZE = 2000
+GRID_SIZE23_X = 1500 #  2023 dataset, use positive and negative 1500 range
+GRID_SIZE23_Y = 1000 #  2023 dataset, use positive and negative 1000 range
 # base url that stores datasets from r/place
 D_URL = 'https://placedata.reddit.com/data/canvas-history/'
 # first filename of dataset
@@ -41,12 +43,10 @@ D_EXT = '.csv'
 # initialize pygame
 pg.init()
 # set display resolution to X & Y constants
-screen = pg.display.set_mode((X_RES * RES_SCALE, Y_RES * RES_SCALE))#, pg.FULLSCREEN)
+screen = pg.display.set_mode((NATIVE_X_RES, NATIVE_Y_RES))#, pg.FULLSCREEN)
 # initialize pygame clock, will be used to lock framerate
 clock = pg.time.Clock()
 pg.mouse.set_visible(False)
-# create array for pixels and set default to white
-pixelArray = np.full((X_RES, Y_RES, 3), 255)
 
 # class to organize information from each pixel in the dataset
 class PlacePixel:
@@ -262,19 +262,18 @@ def readFile(file, dataSet, xOffset, yOffset):
                         # add an entry to the list with the class data
                         dataSet.append(pixel)
                         print('Double entry added')
-
                     # check to see if the checkTime variable has been set
                     if not checkTime:
                         # if not, set it to the seconds value of current entry
                         checkTime = sTime
                     # if current entry is not from the same second as the previous ones
                     if checkTime != sTime:
+                        # update checktime to the seconds value of current entry
+                        checkTime = sTime
                         # send dataset to the readData function, get array of pixel info returned
                         pixelArray = readData(dataSet)
                         # send array of pixel info to the pyGame function
                         pyGame(pixelArray)
-                        # update checktime to the seconds value of current entry
-                        checkTime = sTime
                         # clear dataset so it doesn't get too big
                         dataSet.clear()
                         # re-add current entry as starting point of new dataset
@@ -287,15 +286,15 @@ def readFile(file, dataSet, xOffset, yOffset):
             loopTime = time.time() - loopTime
             timeLoop += loopTime
             if loopTime > maxLoop:
-                maxLoop = loopTime
+                maxLoop = loopTime * 1000
             elif loopTime < minLoop:
-                minLoop = loopTime
+                minLoop = loopTime * 1000
             loopTime = time.time()
-    aveLoop = aveLoop / totalPixels
+    aveLoop = (aveLoop / totalPixels) * 1000
     print(file)
-    print('%s Max loop time' % maxLoop)
-    print('%s Minimum loop time' % minLoop)
-    print('%s Average loop time' % aveLoop)
+    print('%.2f ms Max loop time' % maxLoop)
+    print('%.2f ms Minimum loop time' % minLoop)
+    print('%.2f ms Average loop time' % aveLoop)
     print('%s Total pixels in set' % totalPixels)
     print('%s Used pixels in set' % goodPixels)
     print('%s Unused pixels in set' % badPixels)
@@ -306,7 +305,10 @@ def readData(dataSet):
     # read through the dataset from the first pixel requested until the end of the dataset
     for x in range(len(dataSet)):
         # assign the RGB values to an X,Y position in the array
-        pixelArray[dataSet[x].xPos, dataSet[x].yPos] = dataSet[x].rgb
+        try:
+            pixelArray[dataSet[x].xPos, dataSet[x].yPos] = dataSet[x].rgb
+        except:
+            print(f'Error reading line {x}')
     # return array of pixel data
     return pixelArray
 
@@ -371,10 +373,25 @@ def main():
     # start of pygame loop
     while running:
         # check for pygame events
-        for event in pg.event.get():
-            # if exit code is given, end the loop
-            if event.type == pg.QUIT:
-                running = False
+        #for event in pg.event.get():
+        event = pg.event.wait()
+        # if exit code is given, end the loop
+        if event.type == pg.QUIT:
+            running = False
+        global screen
+        global RES_SCALE
+        global X_RES
+        global Y_RES
+        global pixelArray
+        RES_SCALE = random.randrange(0,MAX_SCALE)
+        if RES_SCALE == 0:
+            RES_SCALE = random.randrange(0,MAX_SCALE)
+            if RES_SCALE == 0:
+                RES_SCALE = 0.5
+        X_RES = round(NATIVE_X_RES / RES_SCALE)
+        Y_RES = round(NATIVE_Y_RES / RES_SCALE)
+        # create array for pixels and set default to white
+        pixelArray = np.full((X_RES, Y_RES, 3), 255)
         xOffset, yOffset, firstSet = pickSpot()
         # loop through ds values of 100-178 (always stops before end value). Since we made our filenames start at 100,
         # we don't need to do any additional padding for numbers below 10 and can just convert all values to strings
@@ -388,6 +405,7 @@ def main():
                 dataSet = readFile(dsFile, dataSet, xOffset, yOffset)
                 setTime = time.time() - setTime
                 print('Dataset processed in %s seconds' % setTime)
+    pygame.quit()
 
 # python way of checking if this is the main program, i.e. this code isn't being called from 'import xxx'
 if __name__ == '__main__':

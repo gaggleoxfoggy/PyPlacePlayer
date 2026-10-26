@@ -1,0 +1,15 @@
+[Unit]
+Description=Start Pygame
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/ubuntu/PyPlacePlayer
+ExecStart=/usr/bin/python3 /home/ubuntu/PyPlacePlayer/PyPlacePlayer.py
+StandardOutput=journal
+StandardError=journal
+Restart=always
+User=ubuntu
+
+[Install]
+WantedBy=multi-user.target
